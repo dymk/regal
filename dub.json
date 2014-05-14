@@ -1,0 +1,8 @@
+{
+	"name": "regal",
+	"description": "A minimal D application.",
+	"copyright": "Copyright © 2014, dymk",
+	"authors": ["dymk"],
+	"dependencies": {
+	}
+}
