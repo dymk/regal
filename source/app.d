@@ -63,8 +63,26 @@ void main() {
     .project(new Sql("*"))
     .toSql() );
 
+  writeln(
+    tags
+    .order(tags.id, tags.value)
+    .project(new Sql("*"))
+    .toSql() );
 
+  writeln(
+    tags
+    .order(tags.id.desc, tags.value)
+    .project(new Sql("*"))
+    .toSql() );
 
+  writeln("\n");
+  writeln(
+    tags
+      .where(tags.value.eq("foobar"))
+      .project(
+        tags.id.as("tag_id"))
+      .toSql()
+    );
 
   //writeln("users.id:   ", users.id);
   //writeln("users.name: ", users.name);

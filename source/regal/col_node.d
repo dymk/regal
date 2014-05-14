@@ -24,6 +24,17 @@ class ColNode : ClauseNode {
   mixin(generate_op_str("gte", "Gte"));
   mixin(generate_op_str("eq", "Eq"));
   mixin(generate_op_str("ne", "Ne"));
+  #line 28 "regal/col_node.d"
+
+  ColWithOrder asc() {
+    return order("ASC");
+  }
+  ColWithOrder desc() {
+    return order("DESC");
+  }
+  ColWithOrder order(string order) {
+    return new ColWithOrder(table, this, order);
+  }
 
 private:
   // binop with a primitive
@@ -40,6 +51,23 @@ private:
     return new BinOp(
       table, kind,
       this, other);
+  }
+}
+
+// Associates a ClauseNode with an additional direction to order by
+// Internal to Order
+class ColWithOrder : ClauseNode {
+  ColNode col;
+  string dir;
+
+  this(string table, ColNode col, string dir) {
+    super(table);
+    this.col = col;
+    this.dir = dir;
+  }
+
+  override void accept(Visitor v) {
+    v.visit(this);
   }
 }
 

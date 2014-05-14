@@ -14,12 +14,6 @@ template isClass(T) {
   enum isClass = is(T == class) || is(T == interface);
 }
 
-//template isCol(T) {
-//  enum isCol = is(T == Column!U, U);
-//}
-
-//static assert(isCol!(Column!int));
-
 // Is 'name' a valid column in the Cols array?
 template IsValidCol(string name, Cols...) {
   static if(Cols.length == 0) {

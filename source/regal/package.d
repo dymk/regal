@@ -9,10 +9,11 @@ package {
   import regal.visitor;
   import regal.ast;
   import regal.col_node;
+  import regal.common_methods;
 }
 
 
-interface ITable {
+interface ITable : CommonMethods {
   final Where where(ClauseNode child) {
     return new Where(table, child, this_as_lhs());
   }
@@ -24,51 +25,6 @@ interface ITable {
   final Join join(string other_table, ClauseNode on = null) {
     return new Join(table, other_table, on, this_as_lhs());
   }
-
-  final Project project(Node[] projections...) {
-    return project(nodelist_from_arr(projections));
-  }
-  final Project project(Node projection) {
-    return new Project(table, projection, this_as_lhs());
-  }
-
-  final BinOp limit(int amt) {
-    return new BinOp(
-      table, BinOp.Kind.Limit,
-      this_as_lhs(),
-      new LitNodeImpl!int(table, amt));
-  }
-
-  final BinOp skip(int amt) {
-    return new BinOp(
-      table, BinOp.Kind.Skip,
-      this_as_lhs(),
-      new LitNodeImpl!int(table, amt));
-  }
-
-  final BinOp order(Node by) {
-    return new BinOp(
-      table, BinOp.Kind.Order,
-      this_as_lhs(),
-      by);
-  }
-  final BinOp order(Node[] by...) {
-    return order(nodelist_from_arr(by));
-  }
-
-  final BinOp group(Node by) {
-    return new BinOp(
-      table, BinOp.Kind.Group,
-      this_as_lhs(),
-      by);
-  }
-  final BinOp group(Node[] by...) {
-    return group(nodelist_from_arr(by));
-  }
-
-protected:
-  string table() @property;
-  Node this_as_lhs();
 }
 
 // Main API for regal
@@ -118,7 +74,8 @@ template Table(string _table_name, Args...)
     mixin(strForCols());
     #line 60 "package.d"
 
-    override string table() @property {
+    // For implementing ITable
+    string table() @property {
       return _table_name;
     }
 

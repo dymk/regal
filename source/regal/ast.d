@@ -21,36 +21,6 @@ abstract class Node {
     visitor.run(this, a);
     return a.data();
   }
-
-  final BinOp limit(int amt) {
-    return new BinOp(
-      table, BinOp.Kind.Limit,
-      this, new LitNodeImpl!int(table, amt));
-  }
-
-  final BinOp skip(int amt) {
-    return new BinOp(
-      table, BinOp.Kind.Skip,
-      this, new LitNodeImpl!int(table, amt));
-  }
-
-  final BinOp order(Node by) {
-    return new BinOp(
-      table, BinOp.Kind.Order,
-      this, by);
-  }
-  final BinOp order(Node[] by...) {
-    return order(nodelist_from_arr(by));
-  }
-
-  final BinOp group(Node by) {
-    return new BinOp(
-      table, BinOp.Kind.Group,
-      this, by);
-  }
-  final BinOp group(Node[] by...) {
-    return group(nodelist_from_arr(by));
-  }
 }
 
 // SELECT <projection> FROM <table> [<clause>]
@@ -66,6 +36,33 @@ class Project : Node {
 
   override void accept(Visitor v) {
     v.visit(this);
+  }
+}
+
+// Join clause
+// Implements ITable so .join can be chained on it
+class Join : Node, ITable {
+  string other_table_name;
+  ClauseNode on;    // optional
+  Node lhs_node;    // Optional
+
+  this(string table, string other_table_name, ClauseNode on, Node lhs_node) {
+    super(table);
+    this.other_table_name = other_table_name;
+    this.on = on;
+    this.lhs_node = lhs_node;
+  }
+
+  override void accept(Visitor v) {
+    v.visit(this);
+  }
+
+  // For implementing ITable
+  string table() @property {
+    return super.table;
+  }
+  Node this_as_lhs() {
+    return this;
   }
 }
 
@@ -102,7 +99,7 @@ class Sql : Node {
 }
 
 // Operator chainable node
-abstract class ClauseNode : Node {
+abstract class ClauseNode : Node, CommonMethods {
 
 protected:
   this(string table) {
@@ -111,63 +108,36 @@ protected:
 
 public:
   // chained 'where' is implemented as an 'and'
-  ClauseNode where(ClauseNode child) {
+  BinOp where(ClauseNode child) {
     return and(child);
   }
 
   // <clause>.and(<clause>)
-  ClauseNode and(ClauseNode rhs) {
+  BinOp and(ClauseNode rhs) {
     return new BinOp(
       table, BinOp.Kind.And,
       this, rhs);
   }
 
   // <clause>.or(<clause>)
-  ClauseNode or(ClauseNode rhs) {
+  BinOp or(ClauseNode rhs) {
     return new BinOp(
       table, BinOp.Kind.Or,
       this, rhs);
   }
 
-  // <clause>.project(<nodes>)
-  Project project(Node[] projections...) {
-    return project(nodelist_from_arr(projections));
-  }
-  Project project(Node projection) {
-    return new Project(
-      table, projection, this);
+  // <clause> AS as_name
+  BinOp as(string as_name) {
+    return new BinOp(
+      table, BinOp.Kind.As,
+      this, new Sql(as_name));
   }
 
-  As as(string as_name) {
-    return new As(
-      table, as_name, this);
-  }
-}
-
-// Join clause
-class Join : Node, ITable {
-  string other_table_name;
-  ClauseNode on;    // optional
-  Node lhs_node;    // Optional
-
-  this(string table, string other_table_name, ClauseNode on, Node lhs_node) {
-    super(table);
-    this.other_table_name = other_table_name;
-    this.on = on;
-    this.lhs_node = lhs_node;
-  }
-
-  override string table() @property {
+  // Methods for satisfying CommonMethods
+  string table() @property {
     return super.table;
   }
-
-  override void accept(Visitor v) {
-    v.visit(this);
-  }
-
-  override Node this_as_lhs() {
-    return this;
-  }
+  Node this_as_lhs() { return this; }
 }
 
 // Where clause operator
@@ -179,22 +149,6 @@ class Where : ClauseNode {
     super(table);
     this.child = child;
     this.lhs = lhs;
-  }
-
-  override void accept(Visitor v) {
-    v.visit(this);
-  }
-}
-
-// As clause operator
-class As : ClauseNode {
-  Node child;
-  string as_name;
-
-  this(string table, string as_name, Node child) {
-    super(table);
-    this.as_name = as_name;
-    this.child = child;
   }
 
   override void accept(Visitor v) {
@@ -243,6 +197,7 @@ class BinOp : ClauseNode {
     Lte,
     Gt,
     Gte,
+    As,
     Limit,
     Skip,
     Group,

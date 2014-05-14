@@ -14,9 +14,9 @@ interface Visitor {
   void visit(Where n);
   void visit(Project p);
   void visit(NodeList n);
-  void visit(As a);
   void visit(Join j);
   void visit(NullNode j);
+  void visit(ColWithOrder c);
 }
 
 class MySqlPrinter(Out) : Visitor
@@ -56,6 +56,7 @@ if(isOutputRange!(Out, string))
       case Lte: opstr = " <= "; break;
       case Gte: opstr = " >= "; break;
 
+      case As:  opstr = " AS "; break;
       case And: opstr = " AND "; add_parens = false; break;
       case Or:  opstr = " OR ";  add_parens = false; break;
       case Limit: opstr = " LIMIT ";    add_parens = false; break;
@@ -106,13 +107,6 @@ if(isOutputRange!(Out, string))
     }
   }
 
-  override void visit(As a) {
-    accum.put("(");
-    a.child.accept(this);
-    accum.put(") AS ");
-    accum.put(a.as_name);
-  }
-
   override void visit(Join j) {
     if(j.lhs_node !is null) {
       j.lhs_node.accept(this);
@@ -128,6 +122,12 @@ if(isOutputRange!(Out, string))
       accum.put(" ON ");
       j.on.accept(this);
     }
+  }
+
+  override void visit(ColWithOrder c) {
+    c.col.accept(this);
+    accum.put(" ");
+    accum.put(c.dir);
   }
 
   override void visit(NullNode t) {}
