@@ -14,6 +14,9 @@ interface Visitor {
   void visit(Where n);
   void visit(Project p);
   void visit(NodeList n);
+  void visit(As a);
+  void visit(Join j);
+  void visit(NullNode j);
 }
 
 class MySqlPrinter(Out) : Visitor
@@ -55,6 +58,10 @@ if(isOutputRange!(Out, string))
 
       case And: opstr = " AND "; add_parens = false; break;
       case Or:  opstr = " OR ";  add_parens = false; break;
+      case Limit: opstr = " LIMIT ";    add_parens = false; break;
+      case Skip:  opstr = " SKIP ";     add_parens = false; break;
+      case Group: opstr = " GROUP ";    add_parens = false; break;
+      case Order: opstr = " ORDER BY "; add_parens = false; break;
     }
 
     if(add_parens) accum.put("(");
@@ -67,6 +74,11 @@ if(isOutputRange!(Out, string))
   }
 
   override void visit(Where w) {
+    if(w.lhs) {
+      w.lhs.accept(this);
+      accum.put(" ");
+    }
+
     accum.put("WHERE ");
     w.child.accept(this);
   }
@@ -78,7 +90,7 @@ if(isOutputRange!(Out, string))
 
     accum.put(" `");
     accum.put(s.table);
-    accum.put("` ");
+    accum.put("`");
 
     if(s.clause) {
       s.clause.accept(this);
@@ -93,4 +105,30 @@ if(isOutputRange!(Out, string))
       n.next.accept(this);
     }
   }
+
+  override void visit(As a) {
+    accum.put("(");
+    a.child.accept(this);
+    accum.put(") AS ");
+    accum.put(a.as_name);
+  }
+
+  override void visit(Join j) {
+    if(j.lhs_node !is null) {
+      j.lhs_node.accept(this);
+      accum.put(" ");
+    }
+
+    accum.put("INNER JOIN `");
+    accum.put(j.other_table_name);
+    accum.put("`");
+
+
+    if(j.on) {
+      accum.put(" ON ");
+      j.on.accept(this);
+    }
+  }
+
+  override void visit(NullNode t) {}
 }

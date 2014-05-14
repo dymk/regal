@@ -7,6 +7,12 @@ private {
 
 // Root node for all SQL syntax trees
 abstract class Node {
+  const string table;
+
+  this(string table) {
+    this.table = table;
+  }
+
   void accept(Visitor v);
 
   string toSql() {
@@ -15,19 +21,46 @@ abstract class Node {
     visitor.run(this, a);
     return a.data();
   }
+
+  final BinOp limit(int amt) {
+    return new BinOp(
+      table, BinOp.Kind.Limit,
+      this, new LitNodeImpl!int(table, amt));
+  }
+
+  final BinOp skip(int amt) {
+    return new BinOp(
+      table, BinOp.Kind.Skip,
+      this, new LitNodeImpl!int(table, amt));
+  }
+
+  final BinOp order(Node by) {
+    return new BinOp(
+      table, BinOp.Kind.Order,
+      this, by);
+  }
+  final BinOp order(Node[] by...) {
+    return order(nodelist_from_arr(by));
+  }
+
+  final BinOp group(Node by) {
+    return new BinOp(
+      table, BinOp.Kind.Group,
+      this, by);
+  }
+  final BinOp group(Node[] by...) {
+    return group(nodelist_from_arr(by));
+  }
 }
 
 // SELECT <projection> FROM <table> [<clause>]
 class Project : Node {
   Node projection;
-  string table;
   Node clause;
 
-  this(string table, Node projection, ClauseNode clause) {
-    assert(table && table != "");
-
+  this(string table, Node projection, Node clause) {
+    super(table);
     this.projection = projection;
-    this.table = table;
     this.clause = clause;
   }
 
@@ -44,6 +77,7 @@ class NodeList : Node {
   Node child;
 
   this(Node child, NodeList next) {
+    super(null);
     this.child = child;
     this.next = next;
   }
@@ -56,6 +90,7 @@ class NodeList : Node {
 // Node representing raw SQL
 class Sql : Node {
   this(string sql) {
+    super(null);
     this.sql = sql;
   }
 
@@ -68,12 +103,10 @@ class Sql : Node {
 
 // Operator chainable node
 abstract class ClauseNode : Node {
-  const string table;
 
 protected:
   this(string table) {
-    assert(table && table != "");
-    this.table = table;
+    super(table);
   }
 
 public:
@@ -96,6 +129,7 @@ public:
       this, rhs);
   }
 
+  // <clause>.project(<nodes>)
   Project project(Node[] projections...) {
     return project(nodelist_from_arr(projections));
   }
@@ -103,15 +137,48 @@ public:
     return new Project(
       table, projection, this);
   }
+
+  As as(string as_name) {
+    return new As(
+      table, as_name, this);
+  }
+}
+
+// Join clause
+class Join : Node, ITable {
+  string other_table_name;
+  ClauseNode on;    // optional
+  Node lhs_node;    // Optional
+
+  this(string table, string other_table_name, ClauseNode on, Node lhs_node) {
+    super(table);
+    this.other_table_name = other_table_name;
+    this.on = on;
+    this.lhs_node = lhs_node;
+  }
+
+  override string table() @property {
+    return super.table;
+  }
+
+  override void accept(Visitor v) {
+    v.visit(this);
+  }
+
+  override Node this_as_lhs() {
+    return this;
+  }
 }
 
 // Where clause operator
 class Where : ClauseNode {
   Node child;
+  Node lhs; // optional
 
-  this(string table, Node child) {
+  this(string table, Node child, Node lhs = null) {
     super(table);
     this.child = child;
+    this.lhs = lhs;
   }
 
   override void accept(Visitor v) {
@@ -119,7 +186,21 @@ class Where : ClauseNode {
   }
 }
 
+// As clause operator
+class As : ClauseNode {
+  Node child;
+  string as_name;
 
+  this(string table, string as_name, Node child) {
+    super(table);
+    this.as_name = as_name;
+    this.child = child;
+  }
+
+  override void accept(Visitor v) {
+    v.visit(this);
+  }
+}
 
 // A literal node (needed as Visitor can't take a
 // templated LitNodeImpl)
@@ -142,7 +223,12 @@ class LitNodeImpl(T) : LitNode {
 
   override string toString() const {
     import std.conv : to;
-    return lit.to!string;
+    static if(is(T : const(char)[])) {
+      return `"` ~ lit.to!string ~ `"`;
+    }
+    else {
+      return lit.to!string;
+    }
   }
 }
 
@@ -157,6 +243,10 @@ class BinOp : ClauseNode {
     Lte,
     Gt,
     Gte,
+    Limit,
+    Skip,
+    Group,
+    Order
   }
 
   Kind kind;
@@ -169,6 +259,14 @@ class BinOp : ClauseNode {
     this.lhs = l;
     this.rhs = r;
   }
+
+  override void accept(Visitor v) {
+    v.visit(this);
+  }
+}
+
+final class NullNode : Node {
+  this() { super(null); }
 
   override void accept(Visitor v) {
     v.visit(this);
