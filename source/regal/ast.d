@@ -81,26 +81,26 @@ protected:
 
 public:
   // chained 'where' is implemented as an 'and'
-  BinOp where(ClauseNode child) {
+  ClauseNode where(ClauseNode child) {
     return and(child);
   }
 
   // <clause>.and(<clause>)
-  BinOp and(ClauseNode rhs) {
+  ClauseNode and(ClauseNode rhs) {
     return new BinOp(
       table, BinOp.Kind.And,
       this, rhs);
   }
 
   // <clause>.or(<clause>)
-  BinOp or(ClauseNode rhs) {
+  ClauseNode or(ClauseNode rhs) {
     return new BinOp(
       table, BinOp.Kind.Or,
       this, rhs);
   }
 
   // <clause> AS as_name
-  BinOp as(string as_name) {
+  ClauseNode as(string as_name) {
     return new BinOp(
       table, BinOp.Kind.As,
       this, new Sql(as_name));
@@ -122,6 +122,25 @@ class Where : ClauseNode {
     super(table);
     this.child = child;
     this.lhs = lhs;
+  }
+
+  // Override to not wrap WHERE in parens (just generate another
+  // WHERE with a BinOp'd child)
+  override ClauseNode and(ClauseNode rhs) {
+    return new Where(
+      table,
+      new BinOp(
+        table, BinOp.Kind.And,
+        child, rhs)
+      , lhs);
+  }
+  override ClauseNode or(ClauseNode rhs) {
+    return new Where(
+      table,
+      new BinOp(
+        table, BinOp.Kind.Or,
+        child, rhs)
+      , lhs);
   }
 
   override void accept(Visitor v) {

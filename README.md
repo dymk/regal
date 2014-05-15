@@ -52,6 +52,7 @@ users.where(users.id.eq(1)).project(new Sql("*")).to_sql
 users
   .where(users.id.eq(1))
   .where(users.name.like("%d%"))
+  .project(new Sql("*"))
   .to_sql
 
 // SELECT * FROM users WHERE (users.id = 1) OR (users.name LIKE "%d%")
@@ -105,6 +106,27 @@ tags
   .project(tags.value)
   .to_sql
 // SELECT tags.value FROM tags GROUP BY tags.value
+```
+
+#### Applying multiple constraints
+Three methods can be chained on nodes to apply constraints: `.where`, `.and`, and `.or`
+on tables, and `.and` and `.or` on constraint expressions (commonly for nesting complex constraints)
+
+For instance:
+```d
+  tags
+    .where(tags.name.like("%foo%"))
+    .or(tags.name.like("%bar%"))
+    .and(
+      // Nested constraints, called directly on columns
+      tags.id.lt(5).or(tags.id.gt(0)))
+    .project(tags.id)
+    .to_sql
+
+  // SELECT tags.id FROM tags WHERE
+  // (((tags.value LIKE "%foo%") OR
+  //   (tags.value LIKE "%bar%")) AND
+  //  ((tags.id < 5) OR (tags.id > 0)))
 ```
 
 #### Join types

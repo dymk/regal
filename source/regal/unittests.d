@@ -87,6 +87,17 @@ unittest {
     "WHERE (tags.id = users.id)");
 }
 
+// Chaining constraints
+unittest {
+  renders_same(
+    tags
+      .where(tags.value.like("%foo%"))
+      .or(tags.value.like("%bar%"))
+      .and(tags.id.lt(5).or(tags.id.gt(0))),
+    `WHERE (((tags.value LIKE "%foo%") OR (tags.value LIKE "%bar%")) AND `
+    `((tags.id < 5) OR (tags.id > 0)))`);
+}
+
 // Limit and skip
 unittest {
   renders_same(
