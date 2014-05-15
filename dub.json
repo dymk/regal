@@ -1,8 +1,8 @@
 {
 	"name": "regal",
-	"description": "A minimal D application.",
+	"description": "SQL relational algebra builder for D",
 	"copyright": "Copyright © 2014, dymk",
 	"authors": ["dymk"],
-	"dependencies": {
-	}
+	"dependencies": {},
+  "version": "0.0.1"
 }

@@ -7,7 +7,8 @@ About
 Regal (RElational ALgebra) is a dependency free library for generating SQL programatically,
 and is intended to be used as the SQL generator for ORMs (although it can
 be used on its own). The API is modeled after Ruby's [Arel](https://github.com/rails/arel),
-and it attempts to provide analagous features.
+and it attempts to provide analagous features. Its aim is to ease programatically
+generating complex SQL, and to adapt its output to fit specific databases (including MySQL, SQLite, PostgreSQL).
 
 Usage
 -----
@@ -18,6 +19,8 @@ Usage
 table name (`string`), and the columns that the table has
 
 ```d
+import regal;
+
 auto users = new Table(
   "users", // table name
   "id",    // the rest are columns
@@ -168,4 +171,14 @@ Columns support the entire range of SQL binary operators.
 | `users.id.in([1, 2])` | `users.id IN (1, 2)` |
 | `users.id.not_in([3, 4])` | `users.id NOT IN (3, 4)` |
 
+Todo
+----
+Write adapters for SQLite and PostgreSQL (see regal/mysql_printer.d for examples)
 
+Authors
+-------
+Copyright (C) 2014, Dylan Knutson ([github.com/dymk](https://github.com/dymk/))
+
+License
+-------
+*Regal* is distributed under the [Boost Software License](http://www.boost.org/LICENSE_1_0.txt).
