@@ -31,10 +31,10 @@ class ColNode : ClauseNode {
   #line 32 "regal/col_node.d"
 
   ColWithOrder asc() {
-    return order("ASC");
+    return new ColWithOrder(table, this, ColWithOrder.Dir.Asc);
   }
   ColWithOrder desc() {
-    return order("DESC");
+    return new ColWithOrder(table, this, ColWithOrder.Dir.Desc);
   }
   ColWithOrder order(string order) {
     return new ColWithOrder(table, this, order);
@@ -61,10 +61,26 @@ private:
 // Associates a ClauseNode with an additional direction to order by
 // Internal to Order
 class ColWithOrder : ClauseNode {
-  ColNode col;
-  string dir;
+  enum Dir {
+    Asc,
+    Desc,
+    Other
+  };
 
-  this(string table, ColNode col, string dir) {
+  ColNode col;
+  Dir dir;
+
+  // present if dir == Dir.Other
+  string dir_str;
+
+  this(string table, ColNode col, string dir_str) {
+    super(table);
+    this.col = col;
+    this.dir = Dir.Other;
+    this.dir_str = dir_str;
+  }
+
+  this(string table, ColNode col, Dir dir) {
     super(table);
     this.col = col;
     this.dir = dir;

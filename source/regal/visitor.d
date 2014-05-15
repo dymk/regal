@@ -75,7 +75,7 @@ if(isOutputRange!(Out, string))
 
       case Limit: opstr = " LIMIT ";    add_parens = false; break;
       case Skip:  opstr = " SKIP ";     add_parens = false; break;
-      case Group: opstr = " GROUP ";    add_parens = false; break;
+      case Group: opstr = " GROUP BY "; add_parens = false; break;
       case Order: opstr = " ORDER BY "; add_parens = false; break;
     }
 
@@ -141,7 +141,18 @@ if(isOutputRange!(Out, string))
   override void visit(ColWithOrder c) {
     c.col.accept(this);
     accum.put(" ");
-    accum.put(c.dir);
+
+    string dir_str;
+
+    final switch(c.dir)
+    with(ColWithOrder.Dir)
+    {
+      case Asc:   dir_str = "ASC"; break;
+      case Desc:  dir_str = "DESC"; break;
+      case Other: dir_str = c.dir_str; break;
+    }
+
+    accum.put(dir_str);
   }
 
   void start_array() {

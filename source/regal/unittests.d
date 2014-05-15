@@ -107,6 +107,47 @@ unittest {
     "((`tags`.`id` = 1) AND (`tags`.`value` = \"foo\"))");
 }
 
+// column ordering
+unittest {
+  renders_same(
+    tags.order(tags.id),
+    "ORDER BY `tags`.`id`");
+}
+unittest {
+  renders_same(
+    tags.order(tags.id.desc),
+    "ORDER BY `tags`.`id` DESC");
+}
+unittest {
+  renders_same(
+    tags.order(tags.id.asc),
+    "ORDER BY `tags`.`id` ASC");
+}
+unittest {
+  // custom ordering string
+  renders_same(
+    tags.order(tags.id.order("foo")),
+    "ORDER BY `tags`.`id` foo");
+}
+unittest {
+  // multiple column ordering
+  renders_same(
+    tags.order(tags.id, tags.value),
+    "ORDER BY `tags`.`id`, `tags`.`value`");
+}
+
+// grouping
+unittest {
+  renders_same(
+    tags.group(tags.id),
+    "GROUP BY `tags`.`id`");
+}
+unittest {
+  renders_same(
+    tags.group(tags.id, tags.value),
+    "GROUP BY `tags`.`id`, `tags`.`value`");
+}
+
 // Test arbitrary type to_sql
 unittest {
   static struct Data {
