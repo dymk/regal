@@ -157,6 +157,8 @@ tags
 
 #### Column operators
 Columns support the entire range of SQL binary operators.
+(Note that `_in` is prefixed with an underscore, as `in` is a reserved
+keyword)
 
 | Expression | SQL |
 | -----------| ----|
@@ -168,8 +170,37 @@ Columns support the entire range of SQL binary operators.
 | `users.id.gte(1)` | `users.id >= 1` |
 | `users.name.like("foo")` | `users.name LIKE "foo"` |
 | `users.name.not_like("foo")` | `users.name NOT LIKE "foo"` |
-| `users.id.in([1, 2])` | `users.id IN (1, 2)` |
+| `users.id._in([1, 2])` | `users.id IN (1, 2)` |
 | `users.id.not_in([3, 4])` | `users.id NOT IN (3, 4)` |
+| `users.id.as("user_id")` | `users.id AS user_id` |
+
+#### Using arbitrary types
+Arbitrary types (such as a struct) can be used within SQL operators, and are converted
+to SQL based on the following rules:
+  - If the type has a method `.to_sql`, which can return a primitive types (`int`, `string`, etc),
+    the return value of that method will be used to represent the type.
+  - Else, `std.conv.to!string` will be used to convert the type to a string
+
+Input ranges and arrays can be used to generate SQL as well, such as for use with the `IN` operator.
+
+For example:
+```d
+struct User {
+  int id;
+  string name;
+
+  int to_sql() {
+    return id;
+  }
+}
+
+auto target_users = [User(1, "Dylan"), User(2, "Sage")];
+users
+  .where(users.id._in(target_users))
+  .project(new Sql("*"))
+// SELECT * FROM users WHERE users.id IN (1, 2)
+```
+
 
 Todo
 ----
