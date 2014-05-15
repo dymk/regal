@@ -15,7 +15,7 @@ abstract class Node {
 
   void accept(Visitor v);
 
-  string toSql() {
+  string to_sql() {
     scope a = appender!string();
     scope visitor = new MySqlPrinter!(Appender!string);
     visitor.run(this, a);
@@ -40,8 +40,8 @@ class Project : Node {
 }
 
 // Join clause
-// Implements ITable so .join can be chained on it
-class Join : Node, ITable {
+// Implements ITable so join can be chained on it
+class Join : Node, Joinable {
   string other_table_name;
   ClauseNode on;    // optional
   Node lhs_node;    // Optional
@@ -156,18 +156,8 @@ class Where : ClauseNode {
   }
 }
 
-// A literal node (needed as Visitor can't take a
-// templated LitNodeImpl)
-abstract class LitNode : ClauseNode {
-  this(string table) { super(table); }
-
-  override void accept(Visitor v) {
-    v.visit(this);
-  }
-}
-
-// Actual implementation of LitNode (holds any type T)
-class LitNodeImpl(T) : LitNode {
+// A literal node
+class LitNode(T) : ClauseNode {
   T lit;
 
   this(string table, ref T lit) {
@@ -175,13 +165,57 @@ class LitNodeImpl(T) : LitNode {
     this.lit = lit;
   }
 
-  override string toString() const {
-    import std.conv : to;
-    static if(is(T : const(char)[])) {
-      return `"` ~ lit.to!string ~ `"`;
+  override void accept(Visitor v) {
+    import std.range : isInputRange;
+    import std.traits : isSomeString;
+    static if(
+      isInputRange!T &&
+      !isSomeString!T) {
+      // lit is a range
+
+      v.start_array();
+
+      bool first = true;
+      foreach(lit_elem; lit) {
+        if(first) {
+          first = false;
+        }
+        else {
+          v.array_sep();
+        }
+
+        visit_nonrange_lit(v, lit_elem);
+      }
+
+      v.end_array();
     }
+
     else {
-      return lit.to!string;
+      // lit is not a range, print it directly
+      visit_nonrange_lit(v, lit);
+    }
+  }
+
+private:
+  static void visit_nonrange_lit(U)(Visitor v, ref U l) {
+    // try using a predefined lit printing method
+    static if(__traits(compiles, {
+      v.visit_lit(l);
+    })) {
+      v.visit_lit(l);
+    }
+
+    // try calling to_sql on the instance
+    else static if(__traits(compiles, {
+      v.visit_lit(l.to_sql());
+    })) {
+      v.visit_lit(l.to_sql());
+    }
+
+    // fallback to directly converting it to a string
+    else {
+      import std.conv : to;
+      v.visit_lit(l.to!string);
     }
   }
 }
@@ -189,14 +223,12 @@ class LitNodeImpl(T) : LitNode {
 // A binary operator relating two other nodes
 class BinOp : ClauseNode {
   enum Kind {
-    And,
-    Or,
-    Eq,
-    Ne,
-    Lt,
-    Lte,
-    Gt,
-    Gte,
+    And, Or,
+    Eq, Ne,
+    Lt, Lte,
+    Gt, Gte,
+    In, NotIn,
+    Like, NotLike,
     As,
     Limit,
     Skip,
@@ -214,14 +246,6 @@ class BinOp : ClauseNode {
     this.lhs = l;
     this.rhs = r;
   }
-
-  override void accept(Visitor v) {
-    v.visit(this);
-  }
-}
-
-final class NullNode : Node {
-  this() { super(null); }
 
   override void accept(Visitor v) {
     v.visit(this);

@@ -28,18 +28,3 @@ template IsValidCol(string name, Cols...) {
     }
   }
 }
-
-// Evaluates to the column type for 'name'
-template TypeForName(string name, Cols...){
-  static if(Cols.length == 0) {
-    alias TypeForName = void;
-  }
-  else {
-    static if(name == Cols[1]) {
-      alias TypeForName = Cols[0];
-    }
-    else {
-      alias TypeForName = TypeForName!(name, Cols[2 .. $]);
-    }
-  }
-}

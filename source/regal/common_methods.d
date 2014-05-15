@@ -2,20 +2,23 @@ module regal.common_methods;
 
 private import regal;
 
+/*
+ * Methods common to nodes directly accessable to the user
+ */
 interface CommonMethods {
 
   final BinOp limit(int amt) {
   return new BinOp(
     table, BinOp.Kind.Limit,
     this_as_lhs(),
-    new LitNodeImpl!int(table, amt));
+    new LitNode!int(table, amt));
   }
 
   final BinOp skip(int amt) {
     return new BinOp(
       table, BinOp.Kind.Skip,
       this_as_lhs(),
-      new LitNodeImpl!int(table, amt));
+      new LitNode!int(table, amt));
   }
 
   final BinOp order(Node by) {

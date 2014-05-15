@@ -24,7 +24,11 @@ class ColNode : ClauseNode {
   mixin(generate_op_str("gte", "Gte"));
   mixin(generate_op_str("eq", "Eq"));
   mixin(generate_op_str("ne", "Ne"));
-  #line 28 "regal/col_node.d"
+  mixin(generate_op_str("_in", "In"));
+  mixin(generate_op_str("not_in", "NotIn"));
+  mixin(generate_op_str("like", "Like"));
+  mixin(generate_op_str("not_like", "NotLike"));
+  #line 32 "regal/col_node.d"
 
   ColWithOrder asc() {
     return order("ASC");
@@ -43,7 +47,7 @@ private:
   {
     return new BinOp(
       table, kind,
-      this, new LitNodeImpl!T(table, other));
+      this, new LitNode!T(table, other));
   }
 
   // binop with another column node
