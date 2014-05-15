@@ -39,33 +39,6 @@ class Project : Node {
   }
 }
 
-// Join clause
-// Implements ITable so join can be chained on it
-class Join : Node, Joinable {
-  string other_table_name;
-  ClauseNode on;    // optional
-  Node lhs_node;    // Optional
-
-  this(string table, string other_table_name, ClauseNode on, Node lhs_node) {
-    super(table);
-    this.other_table_name = other_table_name;
-    this.on = on;
-    this.lhs_node = lhs_node;
-  }
-
-  override void accept(Visitor v) {
-    v.visit(this);
-  }
-
-  // For implementing ITable
-  string table() @property {
-    return super.table;
-  }
-  Node this_as_lhs() {
-    return this;
-  }
-}
-
 // List of nodes, a-la a list of columns to project
 // e.g.
 class NodeList : Node {

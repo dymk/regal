@@ -33,44 +33,58 @@ static this() {
 
 private void renders_same(Node n, string should_be) {
   import std.string : strip;
+  // ignore trailing/leading whitespace
   auto res = n.to_sql().strip;
-  assert(res == should_be, "should have been: `" ~ res ~ "`");
+  assert(res == should_be,
+    "\nwas:              `" ~ res ~ "`" ~
+    "\nshould have been: `" ~ should_be ~ "`");
 }
 
 // Test inner joins
 unittest {
   renders_same(
     tags.join(submissions, submissions.id.eq(tags.submission_id)),
-    "INNER JOIN `submissions` ON (`submissions`.`id` = `tags`.`submission_id`)");
+    "INNER JOIN submissions ON (submissions.id = tags.submission_id)");
+}
+// Test join composition
+unittest {
+  renders_same(
+    tags
+      .join(submissions, submissions.id.eq(tags.submission_id))
+      .join(users,       users.id.eq(submissions.user_id))
+      .where(users.id.eq(1)),
+      "INNER JOIN submissions ON (submissions.id = tags.submission_id) "
+      "INNER JOIN users ON (users.id = submissions.user_id) "
+      "WHERE (users.id = 1)");
 }
 
 // Test projection
 unittest {
   renders_same(
     tags.project(new Sql("*")),
-    "SELECT * FROM `tags`");
+    "SELECT * FROM tags");
 }
 unittest {
   renders_same(
     tags.project(tags.id, tags.value),
-    "SELECT `tags`.`id`, `tags`.`value` FROM `tags`");
+    "SELECT tags.id, tags.value FROM tags");
 }
 unittest {
   renders_same(
     tags.project(new Sql("submission_id")),
-    "SELECT submission_id FROM `tags`");
+    "SELECT submission_id FROM tags");
 }
 
 // Where
 unittest {
   renders_same(
     tags.where(tags.id.eq(1)),
-    "WHERE (`tags`.`id` = 1)");
+    "WHERE (tags.id = 1)");
 }
 unittest {
   renders_same(
     tags.where(tags.id.eq(users.id)),
-    "WHERE (`tags`.`id` = `users`.`id`)");
+    "WHERE (tags.id = users.id)");
 }
 
 // Limit and skip
@@ -84,68 +98,68 @@ unittest {
 unittest {
   renders_same(
     tags.id.eq(1),
-    "(`tags`.`id` = 1)");
+    "(tags.id = 1)");
 }
 unittest {
   renders_same(
     tags.value.like("%foo%"),
-    "(`tags`.`value` LIKE \"%foo%\")");
+    "(tags.value LIKE \"%foo%\")");
 }
 unittest {
   renders_same(
     tags.id._in([4, 5, 6]),
-    "(`tags`.`id` IN (4, 5, 6))");
+    "(tags.id IN (4, 5, 6))");
 }
 unittest {
   renders_same(
     tags.id.eq(1).or(tags.id.eq(2)),
-    "((`tags`.`id` = 1) OR (`tags`.`id` = 2))");
+    "((tags.id = 1) OR (tags.id = 2))");
 }
 unittest {
   renders_same(
     tags.id.eq(1).and(tags.value.eq("foo")),
-    "((`tags`.`id` = 1) AND (`tags`.`value` = \"foo\"))");
+    "((tags.id = 1) AND (tags.value = \"foo\"))");
 }
 
 // column ordering
 unittest {
   renders_same(
     tags.order(tags.id),
-    "ORDER BY `tags`.`id`");
+    "ORDER BY tags.id");
 }
 unittest {
   renders_same(
     tags.order(tags.id.desc),
-    "ORDER BY `tags`.`id` DESC");
+    "ORDER BY tags.id DESC");
 }
 unittest {
   renders_same(
     tags.order(tags.id.asc),
-    "ORDER BY `tags`.`id` ASC");
+    "ORDER BY tags.id ASC");
 }
 unittest {
   // custom ordering string
   renders_same(
     tags.order(tags.id.order("foo")),
-    "ORDER BY `tags`.`id` foo");
+    "ORDER BY tags.id foo");
 }
 unittest {
   // multiple column ordering
   renders_same(
     tags.order(tags.id, tags.value),
-    "ORDER BY `tags`.`id`, `tags`.`value`");
+    "ORDER BY tags.id, tags.value");
 }
 
 // grouping
 unittest {
   renders_same(
     tags.group(tags.id),
-    "GROUP BY `tags`.`id`");
+    "GROUP BY tags.id");
 }
 unittest {
   renders_same(
     tags.group(tags.id, tags.value),
-    "GROUP BY `tags`.`id`, `tags`.`value`");
+    "GROUP BY tags.id, tags.value");
 }
 
 // Test arbitrary type to_sql
@@ -163,5 +177,5 @@ unittest {
 
   renders_same(
     datas.id._in(arr),
-    "(`datas`.`id` IN (1, 2, 3))");
+    "(datas.id IN (1, 2, 3))");
 }

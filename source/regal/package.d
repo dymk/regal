@@ -15,6 +15,9 @@ package {
   import regal.unittests;
 }
 
+// expose in the public API
+public import regal.joinable : Join;
+
 class Table : Joinable {
 private:
   ColNode[string] cols;

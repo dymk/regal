@@ -41,11 +41,12 @@ if(isOutputRange!(Out, string))
   }
 
   override void visit(ColNode n) {
-    accum.put("`");
+    //accum.put("`");
     accum.put(n.table);
-    accum.put("`.`");
+    accum.put(".");
+    //accum.put("`.`");
     accum.put(n.col);
-    accum.put("`");
+    //accum.put("`");
   }
 
   override void visit(Sql s) {
@@ -101,13 +102,12 @@ if(isOutputRange!(Out, string))
   override void visit(Project s) {
     accum.put("SELECT ");
     s.projection.accept(this);
-    accum.put(" FROM");
+    accum.put(" FROM ");
 
-    accum.put(" `");
     accum.put(s.table);
-    accum.put("`");
 
     if(s.clause) {
+      accum.put(" ");
       s.clause.accept(this);
     }
   }
@@ -127,9 +127,18 @@ if(isOutputRange!(Out, string))
       accum.put(" ");
     }
 
-    accum.put("INNER JOIN `");
+    string join_str;
+    final switch(j.type)
+    with(Join.Type) {
+      case Inner:     join_str = "INNER JOIN"; break;
+      case LeftOuter: join_str = "LEFT OUTER JOIN"; break;
+      case FullOuter: join_str = "FULL OUTER JOIN"; break;
+      case Other:     join_str = j.join_str; break;
+    }
+
+    accum.put(join_str);
+    accum.put(" ");
     accum.put(j.other_table_name);
-    accum.put("`");
 
 
     if(j.on) {
