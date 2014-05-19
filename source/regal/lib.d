@@ -2,7 +2,16 @@ module regal.lib;
 
 private import regal;
 
-NodeList nodelist_from_arr(Node[] nodes) {
+mixin template node_methods() {
+  string to_sql() {
+    scope a = appender!string();
+    scope visitor = new MySqlPrinter!(Appender!string);
+    visitor.run(this, a);
+    return a.data();
+  }
+}
+
+NodeList nodelist_from_arr(N)(N[] nodes) {
   NodeList root;
   foreach_reverse(node; nodes) {
     root = new NodeList(node, root);

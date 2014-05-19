@@ -51,7 +51,7 @@ private:
   }
 
   // binop with another column node
-  ClauseNode bin_with(BinOp.Kind kind, ColNode other) {
+  ClauseNode bin_with(BinOp.Kind kind, Node other) {
     return new BinOp(
       table, kind,
       this, other);

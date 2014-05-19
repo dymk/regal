@@ -2,3 +2,5 @@
 *.o
 /.dub
 /regal
+__test__library__
+libregal.a

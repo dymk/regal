@@ -5,8 +5,135 @@ private {
   import std.array;
 }
 
+struct NodeStore {
+  mixin node_methods;
+
+  enum Type {
+    Invalid,
+    NodeClass,
+    WhereStruct,
+    SqlStruct
+  }
+
+private:
+  Type type = Type.Invalid;
+  union {
+    Node node;
+    Where* where;
+    Sql sql;
+  }
+
+public:
+  this(Node node) {
+    this.node = node;
+    this.type = Type.NodeClass;
+  }
+
+  this(Sql sql) {
+    this.sql = sql;
+    this.type = Type.SqlStruct;
+  }
+
+  this(Where* where) {
+    this.where = where;
+    this.type = Type.WhereStruct;
+  }
+
+  this(NodeStore ns) {
+    this.type = ns.type;
+    final switch(ns.type)
+    with(Type) {
+      case Invalid: break;
+      case NodeClass: this.node = ns.node; break;
+      case SqlStruct: this.sql = ns.sql; break;
+      case WhereStruct: this.where = ns.where; break;
+    }
+  }
+
+  bool opCast(T : bool)() {
+    if(type == Type.NodeClass) {
+      return this.node !is null;
+    }
+    else {
+      return (type != Type.Invalid);
+    }
+  }
+
+  void accept(Visitor v) {
+    final switch(type)
+    with(Type)
+    {
+      case Invalid: assert(false, "Can't visit Invlaid NodeStore");
+      case NodeClass: if(this.node) this.node.accept(v); break;
+      case SqlStruct: this.sql.accept(v);  break;
+      case WhereStruct: this.where.accept(v);  break;
+    }
+  }
+}
+
+// Node representing raw SQL
+struct Sql {
+  mixin node_methods;
+
+  this(string sql) {
+    this.sql = sql;
+  }
+
+  void accept(Visitor v) {
+    v.visit(this);
+  }
+
+  string sql;
+}
+
+
+// Where clause operator
+struct Where {
+  mixin node_methods;
+
+  NodeStore child;
+  Node lhs; // optional
+  string table;
+
+  this(N)(string table, N child, Node lhs = null) {
+    this.table = table;
+    this.child = NodeStore(child);
+    this.lhs = lhs;
+  }
+
+  // Override to not wrap WHERE in parens (just generate another
+  // WHERE with a BinOp'd child)
+  Where* and(N)(N rhs) {
+    return new Where(
+      table,
+      new BinOp(
+        table, BinOp.Kind.And,
+        child, rhs),
+      lhs);
+  }
+  Where* or(N)(N rhs) {
+    return new Where(
+      table,
+      new BinOp(
+        table, BinOp.Kind.Or,
+        child, rhs),
+      lhs);
+  }
+
+  // Chained where implemented as 'and'
+  Where* where(N)(N rhs) {
+    return and(rhs);
+  }
+
+  void accept(Visitor v) {
+    v.visit(this);
+  }
+}
+
 // Root node for all SQL syntax trees
 abstract class Node {
+  mixin node_methods;
+
   const string table;
 
   this(string table) {
@@ -14,24 +141,17 @@ abstract class Node {
   }
 
   void accept(Visitor v);
-
-  string to_sql() {
-    scope a = appender!string();
-    scope visitor = new MySqlPrinter!(Appender!string);
-    visitor.run(this, a);
-    return a.data();
-  }
 }
 
 // SELECT <projection> FROM <table> [<clause>]
 class Project : Node {
   Node projection;
-  Node clause;
+  NodeStore clause;
 
-  this(string table, Node projection, Node clause) {
+  this(N)(string table, Node projection, N clause) {
     super(table);
     this.projection = projection;
-    this.clause = clause;
+    this.clause = NodeStore(clause);
   }
 
   override void accept(Visitor v) {
@@ -44,11 +164,11 @@ class Project : Node {
 class NodeList : Node {
   // possibly null
   NodeList next;
-  Node child;
+  NodeStore child;
 
-  this(Node child, NodeList next) {
+  this(N)(N child, NodeList next) {
     super(null);
-    this.child = child;
+    this.child = NodeStore(child);
     this.next = next;
   }
 
@@ -57,22 +177,8 @@ class NodeList : Node {
   }
 }
 
-// Node representing raw SQL
-class Sql : Node {
-  this(string sql) {
-    super(null);
-    this.sql = sql;
-  }
-
-  override void accept(Visitor v) {
-    v.visit(this);
-  }
-
-  string sql;
-}
-
 // Operator chainable node
-abstract class ClauseNode : Node, CommonMethods {
+abstract class ClauseNode : Node {
 
 protected:
   this(string table) {
@@ -81,19 +187,19 @@ protected:
 
 public:
   // chained 'where' is implemented as an 'and'
-  ClauseNode where(ClauseNode child) {
+  ClauseNode where(N)(N child) {
     return and(child);
   }
 
   // <clause>.and(<clause>)
-  ClauseNode and(ClauseNode rhs) {
+  ClauseNode and(N)(N rhs) {
     return new BinOp(
       table, BinOp.Kind.And,
       this, rhs);
   }
 
   // <clause>.or(<clause>)
-  ClauseNode or(ClauseNode rhs) {
+  ClauseNode or(N)(N rhs) {
     return new BinOp(
       table, BinOp.Kind.Or,
       this, rhs);
@@ -103,49 +209,17 @@ public:
   ClauseNode as(string as_name) {
     return new BinOp(
       table, BinOp.Kind.As,
-      this, new Sql(as_name));
+      this, Sql(as_name));
   }
 
   // Methods for satisfying CommonMethods
   string table() @property {
     return super.table;
   }
+
   Node this_as_lhs() { return this; }
-}
 
-// Where clause operator
-class Where : ClauseNode {
-  Node child;
-  Node lhs; // optional
-
-  this(string table, Node child, Node lhs = null) {
-    super(table);
-    this.child = child;
-    this.lhs = lhs;
-  }
-
-  // Override to not wrap WHERE in parens (just generate another
-  // WHERE with a BinOp'd child)
-  override ClauseNode and(ClauseNode rhs) {
-    return new Where(
-      table,
-      new BinOp(
-        table, BinOp.Kind.And,
-        child, rhs)
-      , lhs);
-  }
-  override ClauseNode or(ClauseNode rhs) {
-    return new Where(
-      table,
-      new BinOp(
-        table, BinOp.Kind.Or,
-        child, rhs)
-      , lhs);
-  }
-
-  override void accept(Visitor v) {
-    v.visit(this);
-  }
+  mixin common_methods;
 }
 
 // A literal node
@@ -229,14 +303,14 @@ class BinOp : ClauseNode {
   }
 
   Kind kind;
-  Node rhs;
-  Node lhs;
+  NodeStore rhs;
+  NodeStore lhs;
 
-  this(string table, Kind k, Node l, Node r) {
+  this(N, V)(string table, Kind k, N l, V r) {
     super(table);
     this.kind = k;
-    this.lhs = l;
-    this.rhs = r;
+    this.lhs = NodeStore(l);
+    this.rhs = NodeStore(r);
   }
 
   override void accept(Visitor v) {

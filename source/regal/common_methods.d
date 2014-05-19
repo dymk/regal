@@ -5,7 +5,7 @@ private import regal;
 /*
  * Methods common to nodes directly accessable to the user
  */
-interface CommonMethods {
+mixin template common_methods() {
 
   final BinOp limit(int amt) {
   return new BinOp(
@@ -41,13 +41,19 @@ interface CommonMethods {
     return group(nodelist_from_arr(by));
   }
 
-  final Project project(Node[] projections...) {
+  final Project project(N)(N[] projections...) {
     return project(nodelist_from_arr(projections));
   }
   final Project project(Node projection) {
     return new Project(table, projection, this_as_lhs());
   }
 
-  string table() @property;
-  Node this_as_lhs();
+  // ensure the thing this is mixed into responds to these methods
+  //static assert(__traits(compiles, {
+  //  string table_name = this.table;
+  //}));
+
+  //static assert(__traits(compiles, {
+  //  Node talhs = this.this_as_lhs();
+  //}));
 }

@@ -15,13 +15,13 @@ Usage
 
 #### A quick introduction
 
-`Table` is the main API exposed by Regal. A `Table` is initialized by supplying a
+`struct Table` is the main API exposed by Regal. A `Table` is initialized by supplying a
 table name (`string`), and the columns that the table has
 
 ```d
 import regal;
 
-auto users = new Table(
+auto users = regal.Table(
   "users", // table name
   "id",    // the rest are columns
   "name",
@@ -31,7 +31,7 @@ auto users = new Table(
 
 A query selecting all rows in users can be generated like so:
 ```d
-users.project(new Sql("*")).to_sql;
+users.project(Sql("*")).to_sql;
 // SELECT * FROM users
 ```
 
@@ -46,7 +46,7 @@ users.id;
 
 `.where` called on a regal node can be used to supply a where clause:
 ```d
-users.where(users.id.eq(1)).project(new Sql("*")).to_sql
+users.where(users.id.eq(1)).project(Sql("*")).to_sql
 // SELECT * FROM users WHERE users.id = 1
 ```
 
@@ -55,7 +55,7 @@ users.where(users.id.eq(1)).project(new Sql("*")).to_sql
 users
   .where(users.id.eq(1))
   .where(users.name.like("%d%"))
-  .project(new Sql("*"))
+  .project(Sql("*"))
   .to_sql
 
 // SELECT * FROM users WHERE (users.id = 1) OR (users.name LIKE "%d%")
@@ -64,12 +64,12 @@ users
 Nearly all methods can be composed to produce complex queries:
 ```d
 // Submission made by a user
-submissions = new regal.Table(
+submissions = regal.Table(
   "submissions",
   "id", "url", "user_id");
 
 // Tags on a submission
-tags = new regal.Table(
+tags = regal.Table(
   "tags",
   "id", "value", "submission_id");
 
@@ -77,7 +77,7 @@ tags
   .join(submissions, submissions.id.eq(tags.submission_id))
   .join(users,       users.id.eq(submissions.user_id))
   .where(users.id.eq(1))
-  .project(new Sql("*"))
+  .project(Sql("*"))
   .to_sql
 
 // SELECT * FROM tags
@@ -97,7 +97,7 @@ users
   .order(users.id.asc)
   .skip(9)
   .limit(1)
-  .project(new Sql("*"))
+  .project(Sql("*"))
   .to_sql
 // SELECT * FROM users ORDER BY users.id SKIP 9 LIMIT 1
 ```
@@ -146,7 +146,7 @@ tags
   .join(submissions, Join.Type.LeftOuter, submissions.id.eq(tags.submission_id))
   .join(users,       "CUSTOM JOIN", users.id.eq(submissions.user_id))
   .where(users.id.eq(1))
-  .project(new Sql("*"))
+  .project(Sql("*"))
   .to_sql
 
 // SELECT * FROM tags
@@ -197,7 +197,7 @@ struct User {
 auto target_users = [User(1, "Dylan"), User(2, "Sage")];
 users
   .where(users.id._in(target_users))
-  .project(new Sql("*"))
+  .project(Sql("*"))
 // SELECT * FROM users WHERE users.id IN (1, 2)
 ```
 

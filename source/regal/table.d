@@ -7,7 +7,7 @@ private {
   import std.exception;
 }
 
-class Table : Joinable {
+struct Table {
 private:
   ColNode[string] cols;
   string table_name;
@@ -38,4 +38,6 @@ public:
     // tables themselves don't print
     return null;
   }
+
+  mixin joinable;
 }

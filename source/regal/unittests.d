@@ -10,28 +10,28 @@ private import regal;
 private static Table users, tags, submissions;
 static this() {
   // registered users
-  users = new regal.Table(
+  users = regal.Table(
     "users",
     "id",
     "name",
     "register_time");
 
   // Submission made by a user
-  submissions = new regal.Table(
+  submissions = regal.Table(
     "submissions",
     "id",
     "url",
     "user_id");
 
   // Tags on a post
-  tags = new regal.Table(
+  tags = regal.Table(
     "tags",
     "id",
     "value",
     "submission_id");
 }
 
-private void renders_same(Node n, string should_be) {
+private void renders_same(N)(N n, string should_be) {
   import std.string : strip;
   // ignore trailing/leading whitespace
   auto res = n.to_sql().strip;
@@ -61,7 +61,7 @@ unittest {
 // Test projection
 unittest {
   renders_same(
-    tags.project(new Sql("*")),
+    tags.project(Sql("*")),
     "SELECT * FROM tags");
 }
 unittest {
@@ -71,7 +71,7 @@ unittest {
 }
 unittest {
   renders_same(
-    tags.project(new Sql("submission_id")),
+    tags.project(Sql("submission_id")),
     "SELECT submission_id FROM tags");
 }
 
@@ -96,6 +96,15 @@ unittest {
       .and(tags.id.lt(5).or(tags.id.gt(0))),
     `WHERE (((tags.value LIKE "%foo%") OR (tags.value LIKE "%bar%")) AND `
     `((tags.id < 5) OR (tags.id > 0)))`);
+}
+
+// Chaining .where
+unittest {
+  renders_same(
+    tags
+      .where(tags.id.eq(1))
+      .where(tags.value.eq("foobar")),
+    `WHERE ((tags.id = 1) AND (tags.value = "foobar"))`);
 }
 
 // Limit and skip

@@ -10,7 +10,7 @@ class MySqlPrinter(Out) : Visitor
 if(isOutputRange!(Out, string))
 {
   Out accum;
-  void run(Node root, Out accum) {
+  void run(N)(N root, Out accum) {
     this.accum = accum;
     root.accept(this);
   }
@@ -56,11 +56,11 @@ if(isOutputRange!(Out, string))
     }
 
     if(add_parens) accum.put("(");
-    b.lhs !is null && b.lhs.accept(this);
+    b.lhs && b.lhs.accept(this);
 
     accum.put(opstr);
 
-    b.rhs !is null && b.rhs.accept(this);
+    b.rhs && b.rhs.accept(this);
     if(add_parens) accum.put(")");
   }
 
@@ -97,7 +97,7 @@ if(isOutputRange!(Out, string))
   }
 
   override void visit(Join j) {
-    if(j.lhs_node !is null) {
+    if(j.lhs_node) {
       j.lhs_node.accept(this);
       accum.put(" ");
     }
