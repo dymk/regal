@@ -37,7 +37,7 @@ interface WhereCondition : Node {}
 
 /// Node can have a `where` constraint applied to it
 interface Whereable : Node {
-  Where where(const WhereCondition) const;
+  Where where(inout WhereCondition) inout;
 }
 
 /// A node which can have the can have further specific limitations applied to
@@ -67,15 +67,15 @@ final class Sql : WhereCondition {
 
 /// A literal value node
 class LitNode(T) : WhereCondition {
-  const T lit;
+  T lit;
 
-  this(ref T lit) @safe pure nothrow {
+  this(T lit) @safe pure nothrow {
     this.lit = lit;
   }
 
   override void accept(Visitor v) const {
     import std.range : isInputRange;
-    import std.traits : isSomeString;
+    import std.traits : isSomeString, Unqual;
     static if(
       isInputRange!T &&
       !isSomeString!T) {
@@ -84,7 +84,7 @@ class LitNode(T) : WhereCondition {
       v.start_array();
 
       bool first = true;
-      foreach(lit_elem; lit) {
+      foreach(lit_elem; cast(Unqual!T) lit) {
         if(first) {
           first = false;
         }
@@ -100,14 +100,12 @@ class LitNode(T) : WhereCondition {
 
     else {
       // lit is not a range, print it directly
-      visit_nonrange_lit(v, lit);
+      visit_nonrange_lit(v, cast(Unqual!T) lit);
     }
   }
 
-  mixin AcceptVisitor;
-
 private:
-  static void visit_nonrange_lit(U)(Visitor v, ref U l) {
+  static void visit_nonrange_lit(U)(Visitor v, in U l) {
     // try using a predefined lit printing method
     static if(__traits(compiles, {
       v.visit_lit(l);

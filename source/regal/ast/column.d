@@ -57,13 +57,13 @@ final class UnorderedColumn : Column, WhereCondition {
 
 private:
   // binary operation a primitive
-  WhereCondition bin_with(T)(BinaryCompare.Op kind, const T other)
+  WhereCondition bin_with(T)(BinaryCompare.Op kind, T other)
   @trusted pure nothrow const
   if(!isClass!T)
   {
     return new BinaryCompare(kind,
       cast(const(WhereCondition)) this,
-      cast(const(WhereCondition)) new LitNode!T(other));
+      cast(WhereCondition) new LitNode!T(other));
   }
 
   // binary operation with another column node

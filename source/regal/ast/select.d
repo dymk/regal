@@ -35,15 +35,15 @@ class Where : Whereable {
   const WhereCondition cond; // rhs
 
   /// forward chained 'where' to 'and'
-  Where where(const WhereCondition and_cond) @safe pure nothrow const
+  Where where(inout WhereCondition and_cond) @safe pure nothrow inout
   {
     return and(and_cond);
   }
-  Where and(const WhereCondition and_cond) @safe pure nothrow const
+  Where and(inout WhereCondition and_cond) @safe pure nothrow inout
   {
     return op_impl!Where(BinaryCompare.Op.And, and_cond);
   }
-  Where or(const WhereCondition or_cond) @safe pure nothrow const
+  Where or(inout WhereCondition or_cond) @safe pure nothrow inout
   {
     return op_impl!Where(BinaryCompare.Op.Or, or_cond);
   }
@@ -55,8 +55,8 @@ class Where : Whereable {
   }
 
 protected:
-  WhereType op_impl(WhereType : Where)(in BinaryCompare.Op for_op, const WhereCondition other)
-  @trusted pure nothrow const
+  WhereType op_impl(WhereType : Where)(in BinaryCompare.Op for_op, inout WhereCondition other)
+  @trusted pure nothrow inout
   {
     auto binop = new BinaryCompare(for_op, cond, other);
     return new WhereType(left, binop);
@@ -69,17 +69,17 @@ public:
 final class SelectWhere : Where, Limitable {
   /// Must override these methods from class Where
   override
-  SelectWhere where(const WhereCondition and_cond) @safe pure nothrow const
+  SelectWhere where(inout WhereCondition and_cond) @safe pure nothrow inout
   {
     return and(and_cond);
   }
   override
-  SelectWhere and(const WhereCondition and_cond) @safe pure nothrow const
+  SelectWhere and(inout WhereCondition and_cond) @safe pure nothrow inout
   {
     return op_impl!SelectWhere(BinaryCompare.Op.And, and_cond);
   }
   override
-  SelectWhere or(const WhereCondition or_cond) @safe pure nothrow const
+  SelectWhere or(inout WhereCondition or_cond) @safe pure nothrow inout
   {
     return op_impl!SelectWhere(BinaryCompare.Op.Or, or_cond);
   }
@@ -92,16 +92,17 @@ final class SelectWhere : Where, Limitable {
 
 /// SELECT <projection> FROM <table> part of the query
 final class Select : Whereable, Limitable {
-  const Table  table;
+  const ATable  table;
   const Node[] projection;
 
-  this(const Table table, const Node[] projection...) @safe pure nothrow {
+  this(const ATable table, const Node[] projection...) @safe pure nothrow {
     this.projection = projection;
     this.table = table;
   }
 
-  override SelectWhere where(const(WhereCondition) condition)
-  @safe pure nothrow const
+  override
+  SelectWhere where(inout WhereCondition condition)
+  @safe pure nothrow inout
   {
     return new SelectWhere(this, condition);
   }

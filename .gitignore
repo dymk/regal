@@ -6,3 +6,4 @@ __test__library__
 libregal.a
 /notes
 *.sublime-project
+*.sublime-workspace

@@ -88,14 +88,39 @@ if(isOutputRange!(Out, string))
     accum.put(t.table_name);
   }
 
-  void visit(const JoinedTable) { assert(false); }
-  void visit(const AsTable) { assert(false); }
+  void visit(const JoinedTable j) {
+    string join_str;
+    final switch(j.type)
+    with(JoinType)
+    {
+      case Inner:     join_str = "INNER JOIN"; break;
+      case LeftOuter: join_str = "LEFT OUTER JOIN"; break;
+      case FullOuter: join_str = "FULL OUTER JOIN"; break;
+      case Other:     join_str = j.join_str; break;
+    }
+
+    j.parent.accept(this);
+    accum.put(" ");
+    accum.put(join_str);
+    accum.put(" ");
+    j.other.accept(this);
+
+
+    if(j.on) {
+      accum.put(" ON ");
+      j.on.accept(this);
+    }
+  }
+
+  void visit(const AsTable a) { assert(false); }
 
   void visit(const UnorderedColumn o) {
+    accum.put(o.table_name);
+    accum.put(".");
     accum.put(o.name);
   }
-  void visit(const OrderedColumn) { assert(false); }
-  void visit(const AsColumn) { assert(false); }
+  void visit(const OrderedColumn p) { assert(false); }
+  void visit(const AsColumn a) { assert(false); }
 
   //override void visit(Where w) {
   //  if(w.lhs) {
@@ -146,7 +171,7 @@ if(isOutputRange!(Out, string))
 
   //  accum.put(join_str);
   //  accum.put(" ");
-  //  accum.put(j.other_table_name);
+  //  accum.put(j.other_name);
 
 
   //  if(j.on) {
