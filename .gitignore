@@ -4,3 +4,5 @@
 /regal
 __test__library__
 libregal.a
+/notes
+*.sublime-project

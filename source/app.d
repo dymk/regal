@@ -1,8 +1,7 @@
-import std.stdio;
-import regal;
 
+version(unittest)
 void main() {
-  version(unittest) {
-    writeln("All unittests pass");
-  }
+  import std.stdio;
+  import regal;
+  writeln("All unittests pass");
 }
