@@ -61,9 +61,15 @@ unittest { // right table name is printed
 }
 
 unittest { // explicit where clause
+
   renders_same(
-    users.where(Sql("1 = 1")),
+    users.where(new Sql("1 = 1")),
     "SELECT * FROM users WHERE 1 = 1");
+}
+unittest { // explicit where clause
+  renders_same(
+    users.where(null),
+    "SELECT * FROM users WHERE NULL");
 }
 
 unittest { // select only one column
@@ -100,7 +106,7 @@ unittest { // BinOp w/ ranges
     "SELECT * FROM users WHERE (users.id NOT IN (5, 6, 7))");
 }
 
-/************** Joins *************/
+/************** #join *************/
 unittest { // simple join with an 'on'
   renders_same(
     tags.join(submissions, submissions.id.eq(tags.submission_id)).select(Sql("*")),
@@ -121,4 +127,120 @@ unittest {
       "INNER JOIN submissions ON (submissions.id = tags.submission_id) "
       "INNER JOIN users ON (users.id = submissions.user_id) "
       "WHERE (users.id = 1)");
+}
+
+/*********** #where ***************/
+// Chaining .where
+unittest {
+  renders_same(
+    tags
+      .where(tags.id.eq(1))
+      .where(tags.value.eq("foobar")),
+    `SELECT * FROM tags WHERE ((tags.id = 1) AND (tags.value = "foobar"))`);
+}
+
+/********** Limitable interface **********/
+unittest {
+  renders_same(
+    tags.limit(1),
+    "SELECT * FROM tags LIMIT 1");
+}
+unittest {
+  renders_same(
+    tags.skip(1),
+    "SELECT * FROM tags SKIP 1");
+}
+unittest {
+  renders_same(
+    tags.limit(1).skip(2),
+    "SELECT * FROM tags LIMIT 1 SKIP 2");
+}
+
+/******* operators on columns *************/
+unittest {
+  renders_same(
+    tags.id.eq(1),
+    "(tags.id = 1)");
+}
+unittest {
+  renders_same(
+    tags.value.like("%foo%"),
+    "(tags.value LIKE \"%foo%\")");
+}
+unittest {
+  renders_same(
+    tags.id._in([4, 5, 6]),
+    "(tags.id IN (4, 5, 6))");
+}
+unittest {
+  renders_same(
+    tags.id.eq(1).or(tags.id.eq(2)),
+    "((tags.id = 1) OR (tags.id = 2))");
+}
+unittest {
+  renders_same(
+    tags.id.eq(1).and(tags.value.eq("foo")),
+    "((tags.id = 1) AND (tags.value = \"foo\"))");
+}
+unittest {
+  renders_same(
+    tags.order(tags.id),
+    "SELECT * FROM tags ORDER BY tags.id");
+}
+unittest {
+  renders_same(
+    tags.order(tags.id.desc),
+    "SELECT * FROM tags ORDER BY tags.id DESC");
+}
+unittest {
+  renders_same(
+    tags.order(tags.id.asc),
+    "SELECT * FROM tags ORDER BY tags.id ASC");
+}
+unittest {
+  // custom ordering string
+  renders_same(
+    tags.order(tags.id.order("foo")),
+    "SELECT * FROM tags ORDER BY tags.id foo");
+}
+unittest {
+  // multiple column ordering
+  renders_same(
+    tags.order(tags.id, tags.value),
+    "SELECT * FROM tags ORDER BY tags.id, tags.value");
+}
+unittest {
+  renders_same( // group by a column
+    tags.group(tags.id),
+    "SELECT * FROM tags GROUP BY tags.id");
+}
+unittest {
+  renders_same( // group by multiple columns
+    tags.group(tags.id, tags.value),
+    "SELECT * FROM tags GROUP BY tags.id, tags.value");
+}
+unittest {
+  renders_same( // group by custom string
+    tags.group(Sql("foo")),
+    "SELECT * FROM tags GROUP BY foo");
+}
+unittest {
+  renders_same( // column 'as'
+    tags.select(tags.value.as("tag_value")),
+    "SELECT tags.value AS tag_value FROM tags");
+}
+
+version(none)
+unittest {
+  // Triggers an LDC bug (see bug in ast/select.d `class Select` ctor)
+  auto w = users.where(new Sql("1 = 1"));
+
+  auto var = (cast(Select)w.left).projection[0];
+  auto var2 = cast(Node) var;
+  auto printer = new SqlitePrinter!(Appender!string)();
+  auto accum = appender!string();
+
+  printer.run(w, accum);
+  import std.conv;
+  std.stdio.writeln(var);
 }

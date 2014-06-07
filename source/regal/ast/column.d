@@ -6,18 +6,14 @@ private {
   import std.string;
 }
 
-abstract class Column : Node {
-  const string table_name;
-  const string name;
-
-  this(const string table_name, const string name) @safe pure nothrow {
-    this.table_name = table_name;
-    this.name = name;
-  }
-}
+/// Interface common to all node types
+interface Column : Node {}
 
 /// Has no ordering, but one can be applied to it
 final class UnorderedColumn : Column, WhereCondition {
+  const string table_name;
+  const string name;
+
   mixin(generate_op_str("lt", "Lt"));
   mixin(generate_op_str("lte", "Lte"));
   mixin(generate_op_str("gt", "Gt"));
@@ -31,7 +27,8 @@ final class UnorderedColumn : Column, WhereCondition {
   //#line 32 "regal/ast/column.d"
 
   this(const string table_name, const string name) @safe pure nothrow {
-    super(table_name, name);
+    this.table_name = table_name;
+    this.name = name;
   }
 
   AsColumn as(string as_name) @safe pure nothrow const
@@ -55,9 +52,11 @@ final class UnorderedColumn : Column, WhereCondition {
     return new OrderedColumn(this, OrderedColumn.Dir.Other, dir);
   }
 
+  mixin AndOrableImpl;
+
 private:
   // binary operation a primitive
-  WhereCondition bin_with(T)(BinaryCompare.Op kind, T other)
+  BinaryCompare bin_with(T)(BinaryCompare.Op kind, T other)
   @trusted pure nothrow const
   if(!isClass!T)
   {
@@ -67,7 +66,7 @@ private:
   }
 
   // binary operation with another column node
-  WhereCondition bin_with(
+  BinaryCompare bin_with(
     const BinaryCompare.Op kind,
     const UnorderedColumn other)
   @trusted pure nothrow const
@@ -82,33 +81,35 @@ public:
 }
 
 /// Aliased column
-final class AsColumn : Column {
-  const string original_name;
+final class AsColumn : Column, WhereCondition {
+  const UnorderedColumn root;
+  const string as_name;
 
-  this(const UnorderedColumn other, string new_name) @safe pure nothrow
+  this(const UnorderedColumn root, string new_name) @safe pure nothrow
   {
-    super(other.table_name, new_name);
-    this.original_name = other.name;
+    this.root = root;
+    this.as_name = new_name;
   }
 
   mixin AcceptVisitor2;
 }
 
 // Column with an ordering; used in Order(OrderedColumn[] ...) nodes
-final class OrderedColumn : Column {
+final class OrderedColumn : Column, WhereCondition {
   enum Dir {
     Asc,
     Desc,
     Other
   }
 
+  const UnorderedColumn root;
   const Dir dir;
   const string order_str;
 
-  this(const Column parent, Dir dir, const string order_str = "")
+  this(const UnorderedColumn root, Dir dir, const string order_str = "")
   @safe pure nothrow
   {
-    super(parent.table_name, parent.name);
+    this.root = root;
 
     this.dir = dir;
     if(dir == Dir.Other) {
@@ -127,7 +128,7 @@ final class OrderedColumn : Column {
 private
 string generate_op_str(string op_name, string binop_kind) {
   return "
-    auto %s(V)(V other) @safe pure nothrow const
+    BinaryCompare %s(V)(V other) @safe pure nothrow const
     {
       return bin_with(BinaryCompare.Op.%s, other);
     }

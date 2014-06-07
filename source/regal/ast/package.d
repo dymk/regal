@@ -32,22 +32,56 @@ mixin template AcceptVisitor2() {
   }
 }
 
+/// A node which can have 'and' and 'or' operators chained onto it
+interface AndOrable : Node {
+  AndOrable and(const WhereCondition and_cond) @safe pure nothrow const;
+  AndOrable or(const WhereCondition or_cond) @safe pure nothrow const;
+}
+
+// template that provides a common implementation of AndOrable
+package
+mixin template AndOrableImpl() {
+  final AndOrable and(const WhereCondition and_cond) @safe pure nothrow const
+  {
+    return new BinaryCompare(BinaryCompare.Op.And, this, and_cond);
+  }
+  final AndOrable or(const WhereCondition or_cond) @safe pure nothrow const {
+    return new BinaryCompare(BinaryCompare.Op.Or, this, or_cond);
+  }
+}
+
 /// A node which can be used as the constraint in a 'where' query
 interface WhereCondition : Node {}
 
 /// Node can have a `where` constraint applied to it
 interface Whereable : Node {
-  Where where(inout WhereCondition) inout;
+  Where where(const WhereCondition) @safe pure nothrow const;
 }
 
 /// A node which can have the can have further specific limitations applied to
 /// it. Despite the name, it includes limit, skip, group, and order
 interface Limitable : Node {
-  // TODO: implement these
-  final Limit limit(in int amt) @safe pure nothrow const;
-  final Skip   skip(in int amt) @safe pure nothrow const;
-  final Group group(const(WhereCondition)[] conds...) @safe pure nothrow const;
-  final Order order(const(WhereCondition)[] conds...) @safe pure nothrow const;
+  Limit limit(in int amt) @safe pure nothrow const;
+  Skip   skip(in int amt) @safe pure nothrow const;
+  Group group(const(WhereCondition)[] conds...) @safe pure nothrow const;
+  Order order(const(WhereCondition)[] conds...) @safe pure nothrow const;
+}
+
+/// Pre-implemented Limitable interface that just wraps the caller
+package
+mixin template LimitableImpl() {
+  final Limit limit(in int amt) @safe pure nothrow const {
+    return new Limit(this, amt);
+  }
+  final Skip   skip(in int amt) @safe pure nothrow const {
+    return new Skip(this, amt);
+  }
+  final Group group(const(WhereCondition)[] conds...) @safe pure nothrow const {
+    return new Group(this, conds);
+  }
+  final Order order(const(WhereCondition)[] conds...) @safe pure nothrow const {
+    return new Order(this, conds);
+  }
 }
 
 /// A literal SQL string, inserted into the query verbatim
@@ -62,6 +96,7 @@ final class Sql : WhereCondition {
     return new Sql(sql);
   }
 
+  mixin AndOrableImpl;
   mixin AcceptVisitor;
 }
 
@@ -103,6 +138,8 @@ class LitNode(T) : WhereCondition {
       visit_nonrange_lit(v, cast(Unqual!T) lit);
     }
   }
+
+  mixin AndOrableImpl;
 
 private:
   static void visit_nonrange_lit(U)(Visitor v, in U l) {

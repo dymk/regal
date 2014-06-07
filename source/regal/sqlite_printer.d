@@ -71,7 +71,9 @@ if(isOutputRange!(Out, string))
   void visit(const Where w) {
     w.left.accept(this);
     accum.put(" WHERE ");
-    w.cond.accept(this);
+
+    if(w.cond is null) accum.put("NULL");
+    else               w.cond.accept(this);
   }
 
   void visit(const Limit l) {
@@ -80,9 +82,31 @@ if(isOutputRange!(Out, string))
     accum.put(l.amt.to!string);
   }
 
-  void visit(const Skip) { assert(false); }
-  void visit(const Group) { assert(false); }
-  void visit(const Order) { assert(false); }
+  void visit(const Skip s) {
+    s.root.accept(this);
+    accum.put(" SKIP ");
+    accum.put(s.amt.to!string);
+  }
+  void visit(const Group g) {
+    g.root.accept(this);
+    accum.put(" GROUP BY ");
+
+    foreach(i, cond; g.conds) {
+      if(i != 0) { accum.put(", "); }
+
+      cond.accept(this);
+    }
+  }
+  void visit(const Order o) {
+    o.root.accept(this);
+    accum.put(" ORDER BY ");
+
+    foreach(i, cond; o.conds) {
+      if(i != 0) { accum.put(", "); }
+
+      cond.accept(this);
+    }
+  }
 
   void visit(const Table t) {
     accum.put(t.table_name);
@@ -119,8 +143,26 @@ if(isOutputRange!(Out, string))
     accum.put(".");
     accum.put(o.name);
   }
-  void visit(const OrderedColumn p) { assert(false); }
-  void visit(const AsColumn a) { assert(false); }
+  void visit(const OrderedColumn p) {
+    p.root.accept(this);
+    accum.put(" ");
+
+    string order_str;
+    final switch(p.dir)
+    with(OrderedColumn.Dir) {
+      case Asc: order_str = "ASC"; break;
+      case Desc: order_str = "DESC"; break;
+      case Other: order_str = p.order_str; break;
+    }
+
+    accum.put(order_str);
+  }
+
+  void visit(const AsColumn a) {
+    a.root.accept(this);
+    accum.put(" AS ");
+    accum.put(a.as_name);
+  }
 
   //override void visit(Where w) {
   //  if(w.lhs) {

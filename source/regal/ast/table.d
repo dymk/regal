@@ -3,7 +3,7 @@ module regal.ast.table;
 private import regal.ast;
 
 // Interface common to all Tables
-abstract class ATable : Limitable, Whereable, Node {
+abstract class ATable : Limitable, Whereable {
   /// Produce a new table with a join
   JoinedTable join(
     const Table other,
@@ -16,14 +16,39 @@ abstract class ATable : Limitable, Whereable, Node {
   }
 
   /// Construct a 'select' with Sql("*") and delegate to its 'where'
-  override
-  SelectWhere where(inout WhereCondition cond) @safe pure nothrow inout
+  override final
+  SelectWhere where(const WhereCondition cond) @safe pure nothrow const
+  //Where where(const WhereCondition cond) @safe pure nothrow const
   {
     return select(Sql("*")).where(cond);
   }
 
+  // :::BUG:::
+  // DMD bug prevents the templated Whereable from being looked up, so
+  // put this here as a workaround
+  final
+  SelectWhere where(T)(T lit) @safe pure nothrow const
+  if(!is(T : WhereCondition))
+  {
+    return this.where(new LitNode!T(lit));
+  }
+
+  /// Similar story for the limitables (select all columns)
+  final Limit limit(in int amt) @safe pure nothrow const {
+    return select(Sql("*")).limit(amt);
+  }
+  final Skip   skip(in int amt) @safe pure nothrow const {
+    return select(Sql("*")).skip(amt);
+  }
+  final Group group(const(WhereCondition)[] conds...) @safe pure nothrow const {
+    return select(Sql("*")).group(conds);
+  }
+  final Order order(const(WhereCondition)[] conds...) @safe pure nothrow const {
+    return select(Sql("*")).order(conds);
+  }
+
   /// CRUD operations for the table
-  Select select(const Node[] projection...) @safe pure nothrow const
+  final Select select(const WhereCondition[] projection...) @safe pure nothrow const
   {
     return new Select(this, projection);
   }
