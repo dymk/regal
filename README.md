@@ -1,3 +1,6 @@
+Please don't use this - the API is broken, and the project needs a rewrite
+======
+
 Regal
 =====
 SQL relational algebra builder for D
